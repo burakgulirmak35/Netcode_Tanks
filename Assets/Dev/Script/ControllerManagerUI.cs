@@ -24,15 +24,16 @@ public class ControllerManagerUI : MonoBehaviour
     {
         movementJoystick.gameObject.SetActive(false);
         turretJoystick.gameObject.SetActive(false);
-        btnShoot.onClick.AddListener(BtnShoot);
+        btnShoot.gameObject.SetActive(false);
 
-        NetworkManagerUI.Instance.AddLoginEvent(OnLogin);
+        btnShoot.onClick.AddListener(BtnShoot);
     }
 
-    private void OnLogin()
+    public void EnableControls()
     {
-        movementJoystick.gameObject.SetActive(false);
-        turretJoystick.gameObject.SetActive(false);
+        movementJoystick.gameObject.SetActive(true);
+        turretJoystick.gameObject.SetActive(true);
+        btnShoot.gameObject.SetActive(true);
     }
 
     private void BtnShoot()

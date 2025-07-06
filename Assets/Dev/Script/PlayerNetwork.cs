@@ -15,13 +15,13 @@ public class PlayerNetwork : NetworkBehaviour
     [SerializeField] private Transform _turret;
     [SerializeField] private Transform _firePoint;
     [SerializeField] private Transform _myTransform;
-    [SerializeField] private Transform _tankTransform;
 
     [Header("Movement")]
-    [SerializeField] private float _moveSpeed = 5f;
+    [SerializeField] private float _moveSpeed = 20f;
     [SerializeField] private float _rotationSpeed = 150f;
 
     [Header("Health")]
+    [SerializeField] private Transform _canvasHealth;
     [SerializeField] private int _totalHealth = 100;
     private NetworkVariable<int> _currentHealth = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     [SerializeField] private Slider _healthSlider;
@@ -53,8 +53,10 @@ public class PlayerNetwork : NetworkBehaviour
             _movementJoystick = ControllerManagerUI.Instance.movementJoystick;
             _turretJoystick = ControllerManagerUI.Instance.turretJoystick;
             // Bu satır doğru, UI'daki bir butona Shoot() metodunu bağlıyorsunuz.
-            ControllerManagerUI.Instance.AddShootEvent(Shoot);
             SetCamera();
+
+            ControllerManagerUI.Instance.AddShootEvent(Shoot);
+            ControllerManagerUI.Instance.EnableControls();
         }
 
         if (IsServer)
@@ -86,10 +88,9 @@ public class PlayerNetwork : NetworkBehaviour
 
     void Update()
     {
+        _canvasHealth.rotation = Quaternion.identity;
         if (!IsOwner) return;
-
         HandleMovement();
-        // Metodun adını daha anlaşılır olması için değiştirdim.
         HandleTurretAim();
     }
 
@@ -99,13 +100,17 @@ public class PlayerNetwork : NetworkBehaviour
 
     private void HandleMovement()
     {
-        if (_movementJoystick.Vertical != 0)
+        float horizontalInput = _movementJoystick.Horizontal;
+        float verticalInput = _movementJoystick.Vertical;
+        // Eğer joystick'te bir hareket varsa...
+        if (horizontalInput != 0 || verticalInput != 0)
         {
-            _myTransform.position += _tankTransform.forward * _movementJoystick.Vertical * _moveSpeed * Time.deltaTime;
-        }
-        if (_movementJoystick.Horizontal != 0)
-        {
-            _tankTransform.Rotate(0f, _movementJoystick.Horizontal * _rotationSpeed * Time.deltaTime, 0f);
+            Vector3 targetDirection = new Vector3(horizontalInput, 0f, verticalInput);
+            Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
+            _myTransform.rotation = Quaternion.Slerp(_myTransform.rotation, targetRotation, _rotationSpeed * Time.deltaTime);
+            float moveAmount = new Vector2(horizontalInput, verticalInput).magnitude;
+            moveAmount = Mathf.Clamp01(moveAmount);
+            _myTransform.position += _myTransform.forward * _moveSpeed * moveAmount * Time.deltaTime;
         }
     }
 
@@ -128,23 +133,18 @@ public class PlayerNetwork : NetworkBehaviour
         // Can değerini 0 ile 1 arasında bir orana çevir (slider'ın value değeri için)
         float normalizedHealth = (float)newHealth / _totalHealth;
         _healthSlider.value = normalizedHealth;
-        _healthSliderEffect.DOValue(normalizedHealth, 0.3f);
+        _healthSliderEffect.DOValue(normalizedHealth, 0.5f);
     }
 
     #endregion
 
     #region Network (RPC) Metotları
 
-    // --- DEĞİŞİKLİK BURADA ---
-    // Shoot metodunun içi dolduruldu.
     private void Shoot()
     {
-        // Ateş etme sıklığını (firerate) kontrol et
         if (Time.time >= _nextFireTime)
         {
-            // Bir sonraki ateş etme zamanını ayarla
             _nextFireTime = Time.time + 1f / _firerate;
-            // Sunucudan bizim için ateş etmesini iste
             FireServerRpc(_firePoint.position, _firePoint.rotation);
         }
     }
