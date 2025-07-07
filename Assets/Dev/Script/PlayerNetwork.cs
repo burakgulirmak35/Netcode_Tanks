@@ -8,7 +8,6 @@ using UnityEngine.UI;
 
 public class PlayerNetwork : NetworkBehaviour
 {
-    // Değişkenlerinizde bir sorun yok, olduğu gibi kalabilir...
     #region Değişkenler
 
     [Header("Transforms")]
@@ -18,7 +17,7 @@ public class PlayerNetwork : NetworkBehaviour
 
     [Header("Movement")]
     [SerializeField] private float _moveSpeed = 20f;
-    [SerializeField] private float _rotationSpeed = 150f;
+    [SerializeField] private float _rotationSpeed = 10f;
 
     [Header("Health")]
     [SerializeField] private Transform _canvasHealth;
@@ -26,10 +25,10 @@ public class PlayerNetwork : NetworkBehaviour
     private NetworkVariable<int> _currentHealth = new NetworkVariable<int>(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
     [SerializeField] private Slider _healthSlider;
     [SerializeField] private Slider _healthSliderEffect;
-
+    [SerializeField] private float _healthEffectDuration = 0.5f;
 
     [Header("Gun")]
-    [SerializeField] private float _firerate = 2f; // Saniyede atış sayısı
+    [SerializeField] private float _firerate = 2f;
     private float _nextFireTime = 0f;
     [SerializeField] private float _turretRotateSpeed = 200f;
     [SerializeField] private GameObject _prefabBullet;
@@ -39,8 +38,8 @@ public class PlayerNetwork : NetworkBehaviour
     private FixedJoystick _turretJoystick;
 
     [Header("Camera")]
-
     private CinemachineCamera cinemachineCamera;
+    private Transform _mainCameraTransform;
 
     #endregion
 
@@ -52,9 +51,9 @@ public class PlayerNetwork : NetworkBehaviour
         {
             _movementJoystick = ControllerManagerUI.Instance.movementJoystick;
             _turretJoystick = ControllerManagerUI.Instance.turretJoystick;
-            // Bu satır doğru, UI'daki bir butona Shoot() metodunu bağlıyorsunuz.
-            SetCamera();
+            _mainCameraTransform = Camera.main.transform;
 
+            SetCamera();
             ControllerManagerUI.Instance.AddShootEvent(Shoot);
             ControllerManagerUI.Instance.EnableControls();
         }
@@ -65,21 +64,13 @@ public class PlayerNetwork : NetworkBehaviour
         }
 
         _currentHealth.OnValueChanged += OnHealthChanged;
-        UpdateHealthBar(_currentHealth.Value);
-    }
-
-    private void SetCamera()
-    {
-        cinemachineCamera = FindAnyObjectByType<CinemachineCamera>();
-        cinemachineCamera.Follow = transform;
-        cinemachineCamera.LookAt = transform;
+        UpdateHealthBar(_currentHealth.Value, _currentHealth.Value);
     }
 
     public override void OnNetworkDespawn()
     {
         _currentHealth.OnValueChanged -= OnHealthChanged;
 
-        // ÖNEMLİ: Event aboneliğini de kaldırmalısınız.
         if (IsOwner && ControllerManagerUI.Instance != null)
         {
             ControllerManagerUI.Instance.RemoveShootEvent(Shoot);
@@ -88,34 +79,50 @@ public class PlayerNetwork : NetworkBehaviour
 
     void Update()
     {
-        _canvasHealth.rotation = Quaternion.identity;
         if (!IsOwner) return;
         HandleMovement();
         HandleTurretAim();
+    }
+
+    private void LateUpdate()
+    {
+        if (!IsOwner) return;
+        _canvasHealth.rotation = Quaternion.identity;
     }
 
     #endregion
 
     #region Kontrol ve Mekaniker
 
+    private void SetCamera()
+    {
+        cinemachineCamera = FindAnyObjectByType<CinemachineCamera>();
+        if (cinemachineCamera != null)
+        {
+            cinemachineCamera.Follow = transform;
+            cinemachineCamera.LookAt = transform;
+        }
+    }
+
     private void HandleMovement()
     {
         float horizontalInput = _movementJoystick.Horizontal;
         float verticalInput = _movementJoystick.Vertical;
-        // Eğer joystick'te bir hareket varsa...
+
         if (horizontalInput != 0 || verticalInput != 0)
         {
             Vector3 targetDirection = new Vector3(horizontalInput, 0f, verticalInput);
             Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
+
             _myTransform.rotation = Quaternion.Slerp(_myTransform.rotation, targetRotation, _rotationSpeed * Time.deltaTime);
+
             float moveAmount = new Vector2(horizontalInput, verticalInput).magnitude;
             moveAmount = Mathf.Clamp01(moveAmount);
+
             _myTransform.position += _myTransform.forward * _moveSpeed * moveAmount * Time.deltaTime;
         }
     }
 
-    // --- DEĞİŞİKLİK BURADA ---
-    // Metodun adı ve içeriği güncellendi. Artık sadece nişan almaktan sorumlu.
     private void HandleTurretAim()
     {
         if (_turretJoystick.Horizontal != 0 || _turretJoystick.Vertical != 0)
@@ -124,16 +131,22 @@ public class PlayerNetwork : NetworkBehaviour
             Quaternion targetRotation = Quaternion.LookRotation(turretDirection, Vector3.up);
             _turret.rotation = Quaternion.RotateTowards(_turret.rotation, targetRotation, _turretRotateSpeed * Time.deltaTime);
         }
-
-        // --- OTOMATİK ATEŞ ETME KODU BURADAN KALDIRILDI ---
     }
 
-    private void UpdateHealthBar(int newHealth)
+    private void UpdateHealthBar(int newHealth, int oldHealth)
     {
-        // Can değerini 0 ile 1 arasında bir orana çevir (slider'ın value değeri için)
         float normalizedHealth = (float)newHealth / _totalHealth;
-        _healthSlider.value = normalizedHealth;
-        _healthSliderEffect.DOValue(normalizedHealth, 0.5f);
+
+        if (newHealth > oldHealth)
+        {
+            _healthSliderEffect.value = normalizedHealth;
+            _healthSlider.DOValue(normalizedHealth, _healthEffectDuration);
+        }
+        else
+        {
+            _healthSlider.value = normalizedHealth;
+            _healthSliderEffect.DOValue(normalizedHealth, _healthEffectDuration);
+        }
     }
 
     #endregion
@@ -159,18 +172,49 @@ public class PlayerNetwork : NetworkBehaviour
     [ServerRpc(RequireOwnership = false)]
     public void TakeDamageServerRpc(int amount)
     {
+        if (_currentHealth.Value <= 0) return;
+
         int newHealth = _currentHealth.Value - amount;
         _currentHealth.Value = Mathf.Max(0, newHealth);
 
         if (_currentHealth.Value <= 0)
         {
-            Debug.Log("Bir tank yok edildi!");
+            ClientRpcParams clientRpcParams = new ClientRpcParams
+            {
+                Send = new ClientRpcSendParams
+                {
+                    TargetClientIds = new ulong[] { OwnerClientId }
+                }
+            };
+            StartRespawnClientRpc(clientRpcParams);
         }
     }
 
     private void OnHealthChanged(int previousValue, int newValue)
     {
-        UpdateHealthBar(newValue);
+        UpdateHealthBar(newValue, previousValue);
+    }
+
+    #endregion
+
+    #region Heal
+
+    [ClientRpc]
+    private void StartRespawnClientRpc(ClientRpcParams clientRpcParams = default)
+    {
+        StartCoroutine(RespawnCoroutine());
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void TakeHealthServerRpc()
+    {
+        _currentHealth.Value = _totalHealth;
+    }
+
+    private IEnumerator RespawnCoroutine()
+    {
+        yield return new WaitForSeconds(3f);
+        TakeHealthServerRpc();
     }
 
     #endregion
