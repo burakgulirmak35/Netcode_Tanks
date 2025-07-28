@@ -8,7 +8,7 @@ public class BulletController : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         if (!IsServer) return;
-        //   Destroy(gameObject, 5f);
+        Destroy(gameObject, 3f);
     }
 
     private void Update()

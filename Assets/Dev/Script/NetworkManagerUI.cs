@@ -22,7 +22,8 @@ public class NetworkManagerUI : MonoBehaviour
     [SerializeField] private TMP_InputField InputIp;
     [SerializeField] private TextMeshProUGUI txtFeedback;
 
-
+    [Header("Build Ayarları")]
+    [SerializeField] private bool isServerBuild;
     public event Action onLoginEvent;
 
     private void Awake()
@@ -37,6 +38,15 @@ public class NetworkManagerUI : MonoBehaviour
 
     private void Start()
     {
+        if (isServerBuild)
+        {
+            // UI kapat
+            panelLogin.SetActive(false);
+            BtnServer(); // otomatik başlat
+            Debug.Log("Server build ile başlatıldı.");
+            return;
+        }
+
         // IP göster
         string localIP = GetLocalIPAddress();
         txtFeedback.text = $"Cihaz IP: {localIP}";

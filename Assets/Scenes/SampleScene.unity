@@ -558,6 +558,7 @@ MonoBehaviour:
   btnClient: {fileID: 1817196092}
   InputIp: {fileID: 9525255}
   txtFeedback: {fileID: 1393683655}
+  isServerBuild: 0
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
