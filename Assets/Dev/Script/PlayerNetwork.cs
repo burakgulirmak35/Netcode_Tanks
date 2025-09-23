@@ -53,7 +53,7 @@ public class PlayerNetwork : NetworkBehaviour
             _turretJoystick = ControllerManagerUI.Instance.turretJoystick;
             _mainCameraTransform = Camera.main.transform;
 
-            SetCamera();
+            StartCoroutine(SetCamera());
             ControllerManagerUI.Instance.AddShootEvent(Shoot);
             ControllerManagerUI.Instance.EnableControls();
         }
@@ -94,7 +94,7 @@ public class PlayerNetwork : NetworkBehaviour
 
     #region Kontrol ve Mekaniker
 
-    private void SetCamera()
+    private IEnumerator SetCamera()
     {
         cinemachineCamera = FindAnyObjectByType<CinemachineCamera>();
         if (cinemachineCamera != null)
@@ -102,6 +102,9 @@ public class PlayerNetwork : NetworkBehaviour
             cinemachineCamera.Follow = transform;
             cinemachineCamera.LookAt = transform;
         }
+        _mainCameraTransform.gameObject.SetActive(false);
+        yield return new WaitForEndOfFrame();
+        _mainCameraTransform.gameObject.SetActive(true);
     }
 
     private void HandleMovement()
