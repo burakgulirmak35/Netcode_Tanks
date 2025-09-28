@@ -86,7 +86,6 @@ public class PlayerNetwork : NetworkBehaviour
 
     private void LateUpdate()
     {
-        if (!IsOwner) return;
         _canvasHealth.rotation = Quaternion.identity;
     }
 
