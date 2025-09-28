@@ -5168,7 +5168,7 @@ GameObject:
   - component: {fileID: 7177601116823999610}
   - component: {fileID: 7478263935506280554}
   - component: {fileID: 4098772937555499303}
-  - component: {fileID: 8712686332585141924}
+  - component: {fileID: 4908897709005739958}
   - component: {fileID: 1954373930350576533}
   m_Layer: 0
   m_Name: Collider
@@ -5245,7 +5245,7 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &8712686332585141924
+--- !u!114 &4908897709005739958
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -5254,10 +5254,10 @@ MonoBehaviour:
   m_GameObject: {fileID: 1743624718446230015}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 700d4990a888e44409d91d61d94b0e87, type: 3}
+  m_Script: {fileID: 11500000, guid: c515e9d124bfc994eb6726a454edcd14, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playerNetwork: {fileID: 0}
+  playerNetwork: {fileID: 6823237580678697113}
 --- !u!65 &1954373930350576533
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -10505,7 +10505,7 @@ MonoBehaviour:
   _healthSlider: {fileID: 5813363080590687781}
   _healthSliderEffect: {fileID: 8375122666432852617}
   _healthEffectDuration: 0.5
-  _moveDuration: 30
+  _moveDuration: 1
   _turretAimDuration: 2
 --- !u!114 &4501792889657586240
 MonoBehaviour:
